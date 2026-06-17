@@ -1,0 +1,108 @@
+# secplus_receiver_example.yaml
+#
+# Example ESPHome configuration for the secplus_receiver external component.
+#
+# Hardware:
+#   - ESP32-S3 (any ESP32 variant works; adjust `variant` below)
+#   - CC1101 sub-GHz transceiver wired via SPI
+#
+# Wiring (adjust GPIO numbers to match your board):
+#
+#   CC1101 Pin  →  ESP32 Pin
+#   ─────────────────────────
+#   VCC          3.3 V
+#   GND          GND
+#   MOSI         GPIO9
+#   MISO         GPIO8
+#   SCK          GPIO7
+#   CS           GPIO4
+#   GDO0         GPIO2   ← demodulated OOK output → remote_receiver
+
+substitutions:
+  host_name: secplus-receiver
+  friendly_name: "Security+ 2.0 Receiver"
+
+# ── External component ───────────────────────────────────────────────────────
+
+external_components:
+  - source: github://greenbus4/secplus_receiver@main
+    components: [secplus_receiver]
+    refresh: 1d
+
+# ── secplus_receiver ─────────────────────────────────────────────────────────
+#
+# Declare the component and the sensors you want exposed to Home Assistant.
+# Both sensors are optional; omit either if you don't need it.
+
+secplus_receiver:
+  id: garage_receiver
+  remote_id_sensor:
+    name: "Garage Remote ID"
+  rolling_code_sensor:
+    name: "Garage Rolling Code"
+
+# ── ESPHome core ─────────────────────────────────────────────────────────────
+
+esphome:
+  name: ${host_name}
+  friendly_name: ${friendly_name}
+
+logger:
+  level: DEBUG
+
+esp32:
+  variant: esp32s3   # change to esp32, esp32s2, esp32c3, etc. as needed
+  framework:
+    type: esp-idf
+
+# ── Connectivity ─────────────────────────────────────────────────────────────
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+api:
+  encryption:
+    key: !secret api_key
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+# ── SPI bus ──────────────────────────────────────────────────────────────────
+
+spi:
+  clk_pin: GPIO7
+  mosi_pin: GPIO9
+  miso_pin: GPIO8
+
+# ── CC1101 transceiver ───────────────────────────────────────────────────────
+#
+# Set frequency to match your remotes:
+#   390.00MHz — LiftMaster / Chamberlain 891LM, 893LM, 895LM (most common in US)
+#   315.00MHz — Older LiftMaster / Craftsman remotes
+#   310.00MHz — Some regional variants
+
+cc1101:
+  cs_pin: GPIO4
+  frequency: 390.00MHz
+  modulation_type: ASK/OOK
+  symbol_rate: 4800
+  filter_bandwidth: 203kHz
+  dc_blocking_filter: true
+
+# ── remote_receiver ──────────────────────────────────────────────────────────
+#
+# Captures raw pulse trains from GDO0 and feeds them to the decoder.
+# No on_boot wiring needed — SecplusReceiverComponent.setup() handles that.
+
+remote_receiver:
+  pin:
+    number: GPIO2
+    # inverted: true   # uncomment if your hardware inverts the signal
+  dump: []
+  tolerance: 50%
+  buffer_size: 20kb
+
+  on_raw:
+    - lambda: id(garage_receiver).process(x);
