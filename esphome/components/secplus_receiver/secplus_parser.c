@@ -33,14 +33,10 @@
  */
 
 #include "secplus_parser.h"
-#include <cstdio>
-#include <cstdint>
-#include <cstdbool>
-
-// secplus.h is a plain C header; guard it for C++ compilation.
-extern "C" {
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
 #include "secplus.h"
-}
 
 
 #define TAG "secplus_rx"

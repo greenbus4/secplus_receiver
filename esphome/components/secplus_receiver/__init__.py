@@ -6,10 +6,7 @@ Chamberlain / LiftMaster / Craftsman garage door remotes using a CC1101
 transceiver and the remote_receiver component.
 
 On first build this module downloads secplus.c and secplus.h from the
-argilo/secplus repository (master branch) and places them in a small
-PlatformIO library (libsecplus/) inside the build tree. This keeps them
-off PlatformIO's src/ compilation glob so the linker sees each symbol
-exactly once.
+argilo/secplus repository (master branch) into the component directory.
 
 Minimal YAML usage:
 
@@ -35,7 +32,6 @@ import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome.components import text_sensor
 from esphome.const import CONF_ID
-from esphome.core import CORE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,60 +79,34 @@ CONFIG_SCHEMA = cv.Schema(
 
 # ── Build-time helpers ────────────────────────────────────────────────────────
 
-def _get_lib_dir() -> str:
-    """
-    Return (and create) a libsecplus/ directory inside the PlatformIO build
-    tree for the current node.
-
-    Placing the downloaded sources here means they are compiled as a library
-    — with their own translation unit — and are NOT picked up by PlatformIO's
-    src_filter glob that sweeps src/*.c.  That eliminates the duplicate-symbol
-    linker error that would occur if secplus.c lived inside the component's
-    own directory (which ESPHome mirrors into src/).
-    """
-    build_dir = CORE.build_path          # e.g. /config/.esphome/build/<node>
-    lib_dir = os.path.join(build_dir, "lib", "libsecplus")
-    os.makedirs(lib_dir, exist_ok=True)
-    return lib_dir
-
-
-def _fetch_secplus_sources() -> str:
-    """
-    Download secplus.c and secplus.h into the build-tree library directory.
-    Returns the library directory path.
-    Skips files that are already present.
-    """
-    lib_dir = _get_lib_dir()
+def _fetch_secplus_sources() -> None:
+    """Download secplus.c and secplus.h from GitHub if not already present."""
+    component_dir = os.path.dirname(__file__)
     for filename in SECPLUS_FILES:
-        dest = os.path.join(lib_dir, filename)
+        dest = os.path.join(component_dir, filename)
         if os.path.isfile(dest):
             _LOGGER.debug(
-                "secplus_receiver: %s already present at %s", filename, dest
+                "secplus_receiver: %s already present, skipping download", filename
             )
             continue
         url = SECPLUS_BASE_URL + filename
-        _LOGGER.info("secplus_receiver: downloading %s → %s", url, dest)
+        _LOGGER.info("secplus_receiver: downloading %s", url)
         try:
             urllib.request.urlretrieve(url, dest)
         except Exception as exc:  # noqa: BLE001
             raise RuntimeError(
                 f"secplus_receiver: failed to download {filename} from {url}: {exc}\n"
                 "Check your internet connection, or manually place secplus.c and "
-                f"secplus.h in:\n  {lib_dir}"
+                f"secplus.h in:\n  {component_dir}"
             ) from exc
-    return lib_dir
 
 
 # ── ESPHome hooks ─────────────────────────────────────────────────────────────
 
 async def to_code(config: dict) -> None:
-    # Download upstream sources into the build-tree lib/ directory.
-    lib_dir = _fetch_secplus_sources()
-
-    # Register libsecplus as a PlatformIO library so the build system
-    # compiles it as a separate static archive — not as part of src/.
-    # The "symlink" format (file://) works for local absolute paths.
-    cg.add_library("libsecplus", None, f"file://{lib_dir}")
+    # Fetch the upstream C library before the compiler runs.
+    # Skips silently on subsequent builds when files already exist.
+    _fetch_secplus_sources()
 
     # Instantiate the C++ component.
     var = cg.new_Pvariable(config[CONF_ID])
