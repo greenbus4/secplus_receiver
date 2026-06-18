@@ -1,3 +1,26 @@
+# secplus_receiver.yaml
+#
+# ESPHome configuration for a Security+ v2 garage door receiver.
+#
+# Hardware assumed:
+#   - ESP32 (any variant)
+#   - 310 MHz,315 MHz, or 390 MHz Receiver like CC1101 on GPIO 34
+#     (use any input-capable pin; GPIO 34-39 are input-only on ESP32)
+#
+# Files required (place alongside this YAML or adjust paths):
+#   components/secplus_decoder/secplus_decode.h
+#   components/secplus_decoder/secplus_decode.c
+#   components/secplus_decoder/secplus_shim.h
+#
+# secplus library (libsecplus / secplus.h + secplus.c) must also be present.
+# If you're using the standalone C library, add it to the same folder and
+# list it under libraries or extra_files below.
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#      Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+
 substitutions:
   remote_id_name: "Remote ID"               # Name of the remote ID text sensor
   remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
@@ -12,6 +35,8 @@ substitutions:
   cc111_frequency: 390.00MHz  # 310MHz, 315Mhz, 390Mhz
 
   receiver_pin: GPIO02
+
+# ─────────────────────────────────────────────────────────────────────────────
 
 
 dashboard_import:
