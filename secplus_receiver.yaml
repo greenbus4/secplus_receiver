@@ -27,8 +27,8 @@ substitutions:
 
   # Pin connections to CC1101
   spi_clk_pin: GPIO07
-  spi_miso_pin: GIIO08
-  spi_mosi_pin: GIIO09
+  spi_miso_pin: GPIO08
+  spi_mosi_pin: GPIO09
 
   # CC1101 Receiver
   cc1101_cs_pin: GPIO04
@@ -39,8 +39,8 @@ substitutions:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-dashboard_import:
-  package_import_url: github://greenbus4/secplus_receiver/secplus_receiver.yaml
+#dashboard_import:
+#  package_import_url: github://greenbus4/secplus_receiver/secplus_receiver.yaml
 
 # ── Load Component from Github  ──────────────────────────────────────────────
 external_components:
