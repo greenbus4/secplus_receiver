@@ -4,8 +4,6 @@ An ESPHome external component that decodes **Security+ 2.0** rolling-code
 transmissions from Chamberlain, LiftMaster, and Craftsman garage door remotes
 using a **CC1101** sub-GHz transceiver and ESPHome's `remote_receiver`.
 
-
-
 Decoded results are exposed as Home Assistant `text_sensor` entities:
 
 | Entity | Value |
@@ -13,31 +11,12 @@ Decoded results are exposed as Home Assistant `text_sensor` entities:
 | **Remote ID** | 40-bit fixed remote identifier (decimal string) |
 | **Rolling Code** | Current rolling code counter (decimal string) |
 
-Both sensors are optional — declare only the ones you need.
 
+Purpose: Remote transmitters are widely available, very inexpensive and can have
+a good range. By knowing a remote's ID (as well as its rolling code) lights, gates, etc.
+can be controlled by Home Assistant automations using these remotes.
 
----
-## Note:
-
-### Beta code
-
-This is currently under development and not ready for use.
-
-### AI use
-
-A fair amount of AI was used here.
-
-This code started out as a Python implementation modeled after 
-[secplus_rx_secplus_v2_decode.py](https://github.com/argilo/secplus/blob/master/secplus_rx_secplus_v2_decode.py)
-from the [secplus](https://github.com/argilo/secplus) repository.
-
-I rewrote the code in C, but still using byte arrays to represent binary data.
-Claude AI (Sonnet 4.6) was used to convert it to using bit data to save space
-for using on ESP32. Claude was also used to build the C++ glue to connect ESPHome
-to the C code due to my lack of C++ knowledge.
-AI (Claude and Gemini) were used to speed up creating this external_component.
-
-As a result, much of this README looks AI generated, because it is.
+See [Notes](#notes) below on this being beta software and how AI was used.
 
 ---
 
@@ -92,38 +71,38 @@ Adjust GPIO numbers to match your board.
 
 ## Installation
 
-### 1 — Add the external component
+See [`secplus_receiver_example.yaml`](secplus_receiver_example.yaml) for a
+complete working configuration.
+
+
+### 1 - Add the remote pakage to your YAML configuration:
 
 ```yaml
-external_components:
-  - source: github://greenbus4/secplus_receiver@main
-    components: [secplus_receiver]
-    refresh: 1d
+packages:
+  remote_packate_shorthand: github://greenbus4/secplus_receiver/secplus_receiver.yaml@main
 ```
 
-### 2 — Declare the component and sensors
+### 2 — Optionally add `substitutions` section in your YAML
+
+Adjust depending on your ESP device's wiring and the CC1101 you use.
 
 ```yaml
-secplus_receiver:
-  id: garage_receiver
-  remote_id_sensor:
-    name: "Garage Remote ID"
-  rolling_code_sensor:
-    name: "Garage Rolling Code"
+substitutions:
+  remote_id_name: "Remote ID"               # Name of the remote ID text sensor
+  remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
+
+  # Pin connections to CC1101
+  spi_clk_pin: GPIO07
+  spi_miso_pin: GPIO08
+  spi_mosi_pin: GPIO09
+
+  # CC1101 Receiver
+  cc1101_cs_pin: GPIO04
+  cc1101_frequency: 390.00MHz  # 310MHz, 315Mhz, 390Mhz
+
+  receiver_pin: GPIO02
+
 ```
-
-### 3 — Feed pulses from remote_receiver
-
-```yaml
-remote_receiver:
-  pin: GPIO2
-  dump: []
-  on_raw:
-    - lambda: id(garage_receiver).process(x);
-```
-
-No `globals:`, no `on_boot:` lambda, no manual callback wiring needed.
-`SecplusReceiverComponent::setup()` handles all of that internally.
 
 ---
 
@@ -139,8 +118,6 @@ Set the `cc1101:` block's `frequency:` to match your remotes:
 
 Security+ 2.0 can use all three frequencies.
 
-See [`secplus_receiver_example.yaml`](secplus_receiver_example.yaml) for a
-complete working configuration.
 
 ---
 
@@ -150,16 +127,6 @@ At build time, `__init__.py` downloads **`secplus.c`** and **`secplus.h`**
 from [argilo/secplus](https://github.com/argilo/secplus) (`master` branch)
 into the component directory. An internet connection is required on the first
 build; subsequent builds use the cached copy.
-
-To pin to a specific upstream commit (for reproducible builds), edit
-`SECPLUS_COMMIT` in `__init__.py`:
-
-```python
-SECPLUS_COMMIT = "f62ed51"   # pin to a known-good commit SHA
-```
-
-To vendor the files instead, manually place `secplus.c` and `secplus.h` in
-`esphome/components/secplus_receiver/` — the downloader will skip them.
 
 ---
 
@@ -179,6 +146,28 @@ secplus_receiver/
             └── secplus_shim.h        ← ManchesterDecoder C++ wrapper
             # secplus.c & secplus.h are downloaded here at build time
 ```
+---
+## Notes:
+
+### Beta code
+
+This is currently under development and not ready for use.
+
+### AI use
+
+A fair amount of AI was used here.
+
+This code started out as a Python implementation modeled after 
+[secplus_rx_secplus_v2_decode.py](https://github.com/argilo/secplus/blob/master/secplus_rx_secplus_v2_decode.py)
+from the [secplus](https://github.com/argilo/secplus) repository.
+
+I rewrote the code in C, but still using byte arrays to represent binary data.
+Claude AI (Sonnet 4.6) was used to convert it to using bit data to save space
+for using on ESP32. Claude was also used to build the C++ glue to connect ESPHome
+to the C code due to my lack of C++ knowledge.
+AI (Claude and Gemini) were used to speed up creating this external_component.
+
+As a result, much of this README looks AI generated, because it is.
 
 ---
 
