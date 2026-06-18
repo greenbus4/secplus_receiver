@@ -22,24 +22,26 @@ substitutions:
   host_name: secplus-receiver
   friendly_name: "Security+ 2.0 Receiver"
 
-# ── External component ───────────────────────────────────────────────────────
+  ## Configuration parameters -- uncomment as needed
+  #remote_id_name: "Remote ID"               # Name of the remote ID text sensor
+  #remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
 
-external_components:
-  - source: github://greenbus4/secplus_receiver@main
-    components: [secplus_receiver]
-    refresh: 1d
+  # Pin connections to CC1101
+  #spi_clk_pin: GPIO07
+  #spi_miso_pin: GPIO08
+  #spi_mosi_pin: GPIO09
 
-# ── secplus_receiver ─────────────────────────────────────────────────────────
-#
-# Declare the component and the sensors you want exposed to Home Assistant.
-# Both sensors are optional; omit either if you don't need it.
+  # CC1101 Receiver
+  #cc1101_cs_pin: GPIO04
+  #cc1101_frequency: 390.00MHz  # 310MHz, 315Mhz, 390Mhz
 
-secplus_receiver:
-  id: garage_receiver
-  remote_id_sensor:
-    name: "Garage Remote ID"
-  rolling_code_sensor:
-    name: "Garage Rolling Code"
+  #receiver_pin: GPIO02
+
+# ── Remote Package ───────────────────────────────────────────────────────
+packages:
+  remote_packate_shorthand: github://greenbus4/secplus_receiver/secplus_receiver.yaml@main
+
+
 
 # ── ESPHome core ─────────────────────────────────────────────────────────────
 
@@ -69,40 +71,3 @@ ota:
   - platform: esphome
     password: !secret ota_password
 
-# ── SPI bus ──────────────────────────────────────────────────────────────────
-
-spi:
-  clk_pin: GPIO7
-  mosi_pin: GPIO9
-  miso_pin: GPIO8
-
-# ── CC1101 transceiver ───────────────────────────────────────────────────────
-#
-# Set frequency to match your remotes:
-#   390.00MHz — LiftMaster / Chamberlain 891LM, 893LM, 895LM (most common in US)
-#   315.00MHz — Older LiftMaster / Craftsman remotes
-#   310.00MHz — Some regional variants
-
-cc1101:
-  cs_pin: GPIO4
-  frequency: 390.00MHz
-  modulation_type: ASK/OOK
-  symbol_rate: 4800
-  filter_bandwidth: 203kHz
-  dc_blocking_filter: true
-
-# ── remote_receiver ──────────────────────────────────────────────────────────
-#
-# Captures raw pulse trains from GDO0 and feeds them to the decoder.
-# No on_boot wiring needed — SecplusReceiverComponent.setup() handles that.
-
-remote_receiver:
-  pin:
-    number: GPIO2
-    # inverted: true   # uncomment if your hardware inverts the signal
-  dump: []
-  tolerance: 50%
-  buffer_size: 20kb
-
-  on_raw:
-    - lambda: id(garage_receiver).process(x);
