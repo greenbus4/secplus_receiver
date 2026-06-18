@@ -32,7 +32,7 @@ substitutions:
 
   # CC1101 Receiver
   cc1101_cs_pin: GPIO04
-  cc111_frequency: 390.00MHz  # 310MHz, 315Mhz, 390Mhz
+  cc1101_frequency: 390.00MHz  # 310MHz, 315Mhz, 390Mhz
 
   receiver_pin: GPIO02
 
