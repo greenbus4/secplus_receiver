@@ -1,0 +1,70 @@
+substitutions:
+  remote_id_name: "Remote ID"               # Name of the remote ID text sensor
+  remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
+
+  # Pin connections to CC1101
+  spi_clk_pin: GPIO07
+  spi_miso_pin: GIIO08
+  spi_mosi_pin: GIIO09
+
+  # CC1101 Receiver
+  cc1101_cs_pin: GPIO04
+  cc111_frequency: 390.00MHz  # 310MHz, 315Mhz, 390Mhz
+
+  receiver_pin: GPIO02
+
+
+dashboard_import:
+  package_import_url: githubs://greenbus4/secplus_receiver/secplus_receiver.yaml
+
+# ── Load Component from Github  ──────────────────────────────────────────────
+external_components:
+  - source: github://greenbus4/secplus_receiver@main
+    components: [secplus_receiver]
+    refresh: 1d
+
+
+# ── Configure Receiver ───────────────────────────────────────────────────────
+secplus_receiver:
+  id: secplus_receiver_id
+  remote_id_sensor:
+    name: ${remote_id_name}
+  rolling_code_sensor:
+    name: ${remote_rolling_code_name}
+
+
+# ── SPI bus ──────────────────────────────────────────────────────────────────
+
+spi:
+  clk_pin: ${spi_clk_pin}
+  mosi_pin: ${spi_mosi_pin}
+  miso_pin: ${spi_miso_pin}
+
+# ── CC1101 transceiver ───────────────────────────────────────────────────────
+#
+# Set frequency to match your remotes:
+#   390.00MHz — LiftMaster / Chamberlain 891LM, 893LM, 895LM (most common in US)
+#   315.00MHz — Older LiftMaster / Craftsman remotes
+#   310.00MHz — Some regional variants
+
+cc1101:
+  cs_pin: ${cc1101_cs_pin}
+  frequency: ${cc1101_frequency}
+  modulation_type: ASK/OOK
+  symbol_rate: 4000
+  filter_bandwidth: 203kHz
+  dc_blocking_filter: true
+
+# ── remote_receiver ──────────────────────────────────────────────────────────
+#
+# Captures raw pulse trains and feeds them to the decoder.
+
+remote_receiver:
+  pin:
+    number: ${receiver_pin}
+    # inverted: true   # uncomment if your hardware inverts the signal
+  tolerance: 50%
+  buffer_size: 20kb
+  on_raw:
+    - lambda: id(secplus_receiver_id).process(x);
+
