@@ -82,7 +82,8 @@ cc1101:
 
 # ── remote_receiver ──────────────────────────────────────────────────────────
 #
-# Captures raw pulse trains and feeds them to the decoder.
+# Captures raw pulse trains. The secplus_receiver attaches itself as a listener
+# automatically, so no on_raw lambda is needed.
 
 remote_receiver:
   pin:
@@ -90,6 +91,4 @@ remote_receiver:
     # inverted: true   # uncomment if your hardware inverts the signal
   tolerance: 50%
   buffer_size: 20kb
-  on_raw:
-    - lambda: id(secplus_receiver_id).process(x);
 

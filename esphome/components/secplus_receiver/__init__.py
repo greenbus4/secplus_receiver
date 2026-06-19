@@ -5,68 +5,60 @@ Decodes Security+ 2.0 (Manchester-encoded OOK) transmissions from
 Chamberlain / LiftMaster / Craftsman garage door remotes using a CC1101
 transceiver and the remote_receiver component.
 
+The component attaches itself directly to a remote_receiver as a listener
+(no on_raw lambda required), matching the structure of the acurite component:
+https://github.com/swoboda1337/acurite-esphome
+
 On first build this module downloads secplus.c and secplus.h from the
 argilo/secplus repository (master branch) into the component directory.
 
 Minimal YAML usage:
 
+    remote_receiver:
+      pin: GPIO2
+
     secplus_receiver:
-      id: my_receiver
       remote_id_sensor:
         name: "Remote ID"
       rolling_code_sensor:
         name: "Rolling Code"
-
-    remote_receiver:
-      pin: GPIO2
-      dump: []
-      on_raw:
-        - lambda: id(my_receiver).process(x);
 """
 
-import urllib.request
-import os
 import logging
+import os
+import urllib.request
 
 import esphome.codegen as cg
+from esphome.components import remote_base, remote_receiver, text_sensor
 import esphome.config_validation as cv
-from esphome.components import text_sensor
 from esphome.const import CONF_ID
 
 _LOGGER = logging.getLogger(__name__)
 
-# ── Component identity ────────────────────────────────────────────────────────
-
 DOMAIN = "secplus_receiver"
-CODEOWNERS = []
-DEPENDENCIES = ["text_sensor"]
+CODEOWNERS = ["@greenbus4"]
+DEPENDENCIES = ["remote_receiver", "text_sensor"]
 AUTO_LOAD = ["text_sensor"]
 
 secplus_ns = cg.esphome_ns.namespace("secplus_receiver")
-SecplusReceiverComponent = secplus_ns.class_(
-    "SecplusReceiverComponent", cg.Component
-)
-
-# ── Config keys ───────────────────────────────────────────────────────────────
+SecplusReceiverComponent = secplus_ns.class_("SecplusReceiverComponent", cg.Component)
 
 CONF_REMOTE_ID_SENSOR = "remote_id_sensor"
 CONF_ROLLING_CODE_SENSOR = "rolling_code_sensor"
 
 # ── Upstream C library ────────────────────────────────────────────────────────
-
 # argilo/secplus has no versioned releases; we track master.
 # To pin to a specific commit, replace "master" with a SHA, e.g. "f62ed51".
 SECPLUS_COMMIT = "master"
-SECPLUS_BASE_URL = (
-    f"https://raw.githubusercontent.com/argilo/secplus/{SECPLUS_COMMIT}/src/"
-)
+SECPLUS_BASE_URL = f"https://raw.githubusercontent.com/argilo/secplus/{SECPLUS_COMMIT}/src/"
 SECPLUS_FILES = ["secplus.c", "secplus.h"]
-
-# ── Config schema ─────────────────────────────────────────────────────────────
 
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SecplusReceiverComponent),
+        cv.GenerateID(remote_base.CONF_RECEIVER_ID): cv.use_id(
+            remote_receiver.RemoteReceiverComponent
+        ),
         cv.Optional(CONF_REMOTE_ID_SENSOR): text_sensor.text_sensor_schema(
             icon="mdi:remote",
         ),
@@ -76,8 +68,6 @@ CONFIG_SCHEMA = cv.Schema(
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
-
-# ── Build-time helpers ────────────────────────────────────────────────────────
 
 def _fetch_secplus_sources() -> None:
     """Download secplus.c and secplus.h from GitHub if not already present."""
@@ -101,18 +91,14 @@ def _fetch_secplus_sources() -> None:
             ) from exc
 
 
-# ── ESPHome hooks ─────────────────────────────────────────────────────────────
-
 async def to_code(config: dict) -> None:
     # Fetch the upstream C library before the compiler runs.
-    # Skips silently on subsequent builds when files already exist.
     _fetch_secplus_sources()
 
-    # Instantiate the C++ component.
     var = cg.new_Pvariable(config[CONF_ID])
     await cg.register_component(var, config)
+    await remote_base.register_listener(var, config)
 
-    # Wire up whichever sensors the user declared.
     if remote_id_config := config.get(CONF_REMOTE_ID_SENSOR):
         sens = await text_sensor.new_text_sensor(remote_id_config)
         cg.add(var.set_remote_id_sensor(sens))
