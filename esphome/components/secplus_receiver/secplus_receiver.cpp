@@ -159,10 +159,14 @@ bool SecplusReceiverComponent::on_receive(remote_base::RemoteReceiveData data) {
 }
 
 void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) {
+
+  ESP_LOGD(TAG, "Decoder received %d pulses to process...", n_pulses );
+
   for (int i = 0; i < n_pulses; i++) {
     int p = pulses[i];
     int dur = (p < 0) ? -p : p;
     int lvl = (p > 0) ? 1 : 0;
+
 
     bool flush = (this->manchester_pos_ >= MAX_MANCHESTER - 4);
 
