@@ -25,6 +25,7 @@ substitutions:
   ## Configuration parameters -- uncomment as needed
   #remote_id_name: "Remote ID"               # Name of the remote ID text sensor
   #remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
+  #remote_button_name: "Button ID"
 
   # Pin connections to CC1101
   #spi_clk_pin: GPIO07

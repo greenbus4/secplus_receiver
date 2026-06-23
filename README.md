@@ -75,7 +75,7 @@ See [`secplus_receiver_example.yaml`](secplus_receiver_example.yaml) for a
 complete working configuration.
 
 
-### 1 - Add the remote pakage to your YAML configuration:
+### 1 - Add the remote package to your YAML configuration:
 
 ```yaml
 packages:
@@ -90,6 +90,7 @@ Adjust depending on your ESP device's wiring and the CC1101 you use.
 substitutions:
   remote_id_name: "Remote ID"               # Name of the remote ID text sensor
   remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
+  remote_button_name: "Button ID"
 
   # Pin connections to CC1101
   spi_clk_pin: GPIO07

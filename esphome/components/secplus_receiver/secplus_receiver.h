@@ -49,6 +49,12 @@ class SecplusReceiverComponent
 
   bool fire_event_{false};
 
+  // seems like having a struct or just c++ skills would be good here...
+  // TODO add data
+  uint64_t last_remote_id{0};
+  uint32_t last_rolling{0};
+  uint32_t last_button{0};
+
 #if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
     std::string get_bits_string(); 
 #endif

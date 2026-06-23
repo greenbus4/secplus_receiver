@@ -242,8 +242,22 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
 
 void SecplusReceiverComponent::publish_(uint64_t remote_id, uint32_t rolling,  uint32_t button, uint32_t data, uint8_t frame_type) {
 
+    if (remote_id == this->last_remote_id && rolling == this->last_rolling && button == this->last_button ) {
+        ESP_LOGD(TAG, "remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u [DUPLICATE]",
+            (unsigned long long) remote_id, (unsigned) rolling, (unsigned) button, (unsigned) data, (unsigned) frame_type);
+        return;
+    }
+
+
     ESP_LOGD(TAG, "remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u", (unsigned long long) remote_id,
            (unsigned) rolling, (unsigned) button, (unsigned) data, (unsigned) frame_type);
+
+    // To catch duplicates
+    this->last_remote_id = remote_id;
+    this->last_rolling = rolling;
+    this->last_button = button;
+
+
 
     char buf[24];
     if (this->remote_id_sensor_ != nullptr) {
