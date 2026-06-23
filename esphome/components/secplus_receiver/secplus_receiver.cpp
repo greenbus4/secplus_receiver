@@ -182,6 +182,9 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
       }
 
       bool is_packet_1 = (this->packet1_len_ == 0);
+
+
+
       int frame_id = is_packet_1
                          ? process_packet(this->manchester_, this->manchester_pos_, this->packet1_, &this->packet1_len_)
                          : process_packet(this->manchester_, this->manchester_pos_, this->packet2_, &this->packet2_len_);
@@ -190,6 +193,9 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
         ESP_LOGD(TAG, "frame #%d decoded (%d bits)", frame_id,
                  frame_id == 1 ? this->packet1_len_ : this->packet2_len_);
       }
+
+      // Print out the raw Manchester for VERBOSE logging
+      ESP_LOGV(TAG, "%s", this->get_bits_string().c_str());
 
       // Reject out-of-order frame 2 arriving before frame 1.
       if (is_packet_1 && frame_id == 2) {
@@ -209,7 +215,8 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
         if (ret < 0) {
           ESP_LOGE(TAG, "secplus decode_v2 failed and returned: %d", ret);
         } else {
-          this->publish_(fixed & 0xf0ffffffffULL, rolling, data, frame_type);
+          uint32_t remote = (fixed >> 32) & 0xf;
+          this->publish_(fixed & 0xf0ffffffffULL, rolling, remote, data, frame_type);
         }
 
         this->packet1_len_ = this->packet2_len_ = 0;
@@ -233,20 +240,65 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
   }
 }
 
-void SecplusReceiverComponent::publish_(uint64_t remote_id, uint32_t rolling, uint32_t data, uint8_t frame_type) {
-  ESP_LOGD(TAG, "remote_id=%llu rolling=%u data=0x%08X frame_type=%u", (unsigned long long) remote_id,
-           (unsigned) rolling, (unsigned) data, (unsigned) frame_type);
+void SecplusReceiverComponent::publish_(uint64_t remote_id, uint32_t rolling,  uint32_t button, uint32_t data, uint8_t frame_type) {
 
-  char buf[24];
-  if (this->remote_id_sensor_ != nullptr) {
-    snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
-    this->remote_id_sensor_->publish_state(buf);
-  }
-  if (this->rolling_code_sensor_ != nullptr) {
-    snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
-    this->rolling_code_sensor_->publish_state(buf);
-  }
+    ESP_LOGD(TAG, "remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u", (unsigned long long) remote_id,
+           (unsigned) rolling, (unsigned) button, (unsigned) data, (unsigned) frame_type);
+
+    char buf[24];
+    if (this->remote_id_sensor_ != nullptr) {
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
+        this->remote_id_sensor_->publish_state(buf);
+    }
+
+    if (this->button_sensor_ != nullptr) {
+        snprintf(buf, sizeof(buf), "%u", (unsigned) button);
+        this->button_sensor_->publish_state(buf);
+    }
+
+    if (this->rolling_code_sensor_ != nullptr) {
+        snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
+        this->rolling_code_sensor_->publish_state(buf);
+    }
+
+    if (this->fire_event_) {
+        std::map<std::string, std::string> data;
+        char buf[24];
+
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
+        data["remote_id"] = buf;
+
+        snprintf(buf, sizeof(buf), "%u", (unsigned) button);
+        data["button"] = buf;
+
+        snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
+        data["rolling_code"] = buf;
+
+        this->fire_homeassistant_event("esphome.secplus_received", data);
+    }
+
+
 }
 
+#if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
+    // No parameters needed; uses internal state safely
+    std::string SecplusReceiverComponent::get_bits_string() {
+        int count = this->manchester_pos_;
+        if (count <= 0) return "[]";
+
+        // Safety cap to prevent reading past your 64-byte (512-bit) buffer
+        if (count > 512) count = 512; 
+
+        std::string result;
+        result.reserve(count * 2 + 1);
+        result += "[";
+        for (int i = 0; i < count; ++i) {
+            result += (bitarr_get(this->manchester_, i) ? '1' : '0');
+            if (i < count - 1) result += ",";
+        }
+        result += "]";
+        return result;
+    }
+#endif
 }  // namespace secplus_receiver
 }  // namespace esphome

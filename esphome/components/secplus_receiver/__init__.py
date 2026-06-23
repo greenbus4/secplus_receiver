@@ -20,8 +20,13 @@ Minimal YAML usage:
     secplus_receiver:
       remote_id_sensor:
         name: "Remote ID"
+
+      button_sensor:
+        name: "Button ID"
+
       rolling_code_sensor:
         name: "Rolling Code"
+
 """
 
 import logging
@@ -37,7 +42,7 @@ _LOGGER = logging.getLogger(__name__)
 
 DOMAIN = "secplus_receiver"
 CODEOWNERS = ["@greenbus4"]
-DEPENDENCIES = ["remote_receiver", "text_sensor"]
+DEPENDENCIES = ["remote_receiver", "text_sensor", "api"]
 AUTO_LOAD = ["text_sensor"]
 
 secplus_ns = cg.esphome_ns.namespace("secplus_receiver")
@@ -45,6 +50,8 @@ SecplusReceiverComponent = secplus_ns.class_("SecplusReceiverComponent", cg.Comp
 
 CONF_REMOTE_ID_SENSOR = "remote_id_sensor"
 CONF_ROLLING_CODE_SENSOR = "rolling_code_sensor"
+CONF_BUTTON_SENSOR = "button_sensor"
+CONF_FIRE_EVENT = "fire_homeassistant_event"
 
 # ── Upstream C library ────────────────────────────────────────────────────────
 # argilo/secplus has no versioned releases; we track master.
@@ -62,9 +69,13 @@ CONFIG_SCHEMA = cv.Schema(
         cv.Optional(CONF_REMOTE_ID_SENSOR): text_sensor.text_sensor_schema(
             icon="mdi:remote",
         ),
+        cv.Optional(CONF_BUTTON_SENSOR): text_sensor.text_sensor_schema(
+            icon="mdi:button-pointer",
+        ),
         cv.Optional(CONF_ROLLING_CODE_SENSOR): text_sensor.text_sensor_schema(
             icon="mdi:counter",
         ),
+        cv.Optional(CONF_FIRE_EVENT, default=False): cv.boolean,
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -103,6 +114,15 @@ async def to_code(config: dict) -> None:
         sens = await text_sensor.new_text_sensor(remote_id_config)
         cg.add(var.set_remote_id_sensor(sens))
 
+    if button_config := config.get(CONF_BUTTON_SENSOR):
+        sens = await text_sensor.new_text_sensor(button_config)
+        cg.add(var.set_button_sensor(sens))
+
     if rolling_config := config.get(CONF_ROLLING_CODE_SENSOR):
         sens = await text_sensor.new_text_sensor(rolling_config)
         cg.add(var.set_rolling_code_sensor(sens))
+
+    if config.get(CONF_FIRE_EVENT):
+        cg.add(var.set_fire_event(True))
+
+

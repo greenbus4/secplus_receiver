@@ -20,14 +20,21 @@
 #include "esphome/core/component.h"
 #include "esphome/components/remote_base/remote_base.h"
 #include "esphome/components/text_sensor/text_sensor.h"
+#include "esphome/components/api/custom_api_device.h"
 
 namespace esphome {
 namespace secplus_receiver {
 
-class SecplusReceiverComponent : public Component, public remote_base::RemoteReceiverListener {
+class SecplusReceiverComponent
+    : public Component,
+      public remote_base::RemoteReceiverListener,
+      public api::CustomAPIDevice {
+
  public:
   void set_remote_id_sensor(text_sensor::TextSensor *sensor) { this->remote_id_sensor_ = sensor; }
   void set_rolling_code_sensor(text_sensor::TextSensor *sensor) { this->rolling_code_sensor_ = sensor; }
+  void set_button_sensor(text_sensor::TextSensor *sensor) { this->button_sensor_ = sensor; }
+  void set_fire_event(bool fire) { this->fire_event_ = fire; }
 
   void dump_config() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
@@ -38,7 +45,14 @@ class SecplusReceiverComponent : public Component, public remote_base::RemoteRec
   void decode_raw_(const int32_t *pulses, int n_pulses);
 
   // Fire the sensors / log line once a Security+ v2 packet pair is decoded.
-  void publish_(uint64_t remote_id, uint32_t rolling, uint32_t data, uint8_t frame_type);
+  void publish_(uint64_t remote_id, uint32_t rolling, uint32_t button, uint32_t data, uint8_t frame_type);
+
+  bool fire_event_{false};
+
+#if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
+    std::string get_bits_string(); 
+#endif
+
 
   // ── Manchester decoder state ───────────────────────────────────────────────
   // Retained across on_receive() calls so the two Security+ frames can be
@@ -52,6 +66,7 @@ class SecplusReceiverComponent : public Component, public remote_base::RemoteRec
 
   text_sensor::TextSensor *remote_id_sensor_{nullptr};
   text_sensor::TextSensor *rolling_code_sensor_{nullptr};
+  text_sensor::TextSensor *button_sensor_{nullptr};
 };
 
 }  // namespace secplus_receiver
