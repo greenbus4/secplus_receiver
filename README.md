@@ -1,20 +1,44 @@
 # secplus_receiver — ESPHome External Component
 
 An ESPHome external component that decodes **Security+ 2.0** rolling-code
-transmissions from Chamberlain, LiftMaster, and Craftsman garage door remotes
+transmissions from Chamberlain, LiftMaster, Craftsman and other knock-off garage door remotes
 using a **CC1101** sub-GHz transceiver and ESPHome's `remote_receiver`.
 
-Decoded results are exposed as Home Assistant `text_sensor` entities:
-
-| Entity | Value |
-|---|---|
-| **Remote ID** | 40-bit fixed remote identifier (decimal string) |
-| **Rolling Code** | Current rolling code counter (decimal string) |
-
-
 Purpose: Remote transmitters are widely available, very inexpensive and can have
-a good range. By knowing a remote's ID (as well as its rolling code) lights, gates, etc.
+a good range. By knowing a remote's fixed identifier (as well as its rolling code) lights, gates, etc.
 can be controlled by Home Assistant automations using these remotes.
+
+Decoded results are exposed as Home Assistant sensor entities 
+and/or via an event sent to Home Assistant.  
+
+Zero or more text entities can be set up, and their names can be changed via a `substitutions`
+secton in your YAML.  If using the `packages` approach (as shown below) only "Fixed Data"
+and "Rolling Code" entities are set up.
+
+| Entity Name | Value |
+|---|---|
+| **Fixed Data** | 40-bit fixed remote identifier |
+| **Rolling Code** | Current rolling code counter |
+| **Remote ID** | Attempted parse of the remote's specific ID |
+| **Button ID** | Attempted parse of the individual button pressed |
+
+The "Fixed Data" should be unique to the remote + specific button pushed.
+The fixed data may be broken into two parts which typically holds the remote's ID
+and the specific button pressed, but decoding those may be inconsistent across different
+remote manufactures. That is why those entites are disabled by default.
+
+This can also send an event to Home Assistant when a button press is detected. This is disabled by default.
+The event is "esphome.secplus_received" and includes in the event data:
+"fixed_data", "rolling_code", "remote_id", and "button". This is useful if you want to trigger on a button
+press AND have all the data at the same time. (Triggering on a sensor may mean the other sensors are not in sync at
+that instant.)
+
+To enable events add this to your YAML:
+
+```
+secplus_receiver:
+  fire_homeassistant_event: true
+```
 
 See [Notes](#notes) below on this being beta software and how AI was used.
 
@@ -88,9 +112,10 @@ Adjust depending on your ESP device's wiring and the CC1101 you use.
 
 ```yaml
 substitutions:
-  remote_id_name: "Remote ID"               # Name of the remote ID text sensor
+  remote_fixed_data_name:   "Fixed Data"    # Name of fixed data returned by remote as a t
   remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
-  remote_button_name: "Button ID"
+  remote_id_name:           "Remote ID"     # Name of the remote ID text sensor
+  remote_button_name:       "Button ID"     # Name of the button text sensor
 
   # Pin connections to CC1101
   spi_clk_pin: GPIO07
@@ -104,6 +129,19 @@ substitutions:
   receiver_pin: GPIO02
 
 ```
+### 3 - Optionally add a `secplus_receiver:` section to enable or disable entites and enable HA events:
+
+```
+secplus_receiver:
+  remote_id_sensor:
+    name: ${remote_id_name}
+
+  button_sensor:
+    name: ${remote_button_name}
+
+  fire_homeassistant_event: true
+```
+
 
 ---
 
