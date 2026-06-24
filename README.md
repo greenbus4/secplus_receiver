@@ -190,7 +190,9 @@ secplus_receiver/
 
 ### Beta code
 
-This is currently under development and not ready for use.
+This is currently still being tested and subject to change.
+One change might be include the optional "data" provided by the remote
+that can include, for example, pin codes.
 
 ### AI use
 
