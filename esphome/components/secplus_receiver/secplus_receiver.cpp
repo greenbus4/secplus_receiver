@@ -246,30 +246,43 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
     uint32_t button = (fixed >> 32) & 0xf;
     uint64_t remote_id = fixed & 0xf0ffffffffULL;
 
-    // Have we seen this fixed+rolling?
-    // TODO: decode data and include in last seen
-    if (rolling == this->last_rolling && fixed == this->last_fixed ) {
+    // Pull out the keypad, if any. This implementation is incomplete.
+    // This isn't great the keypad = 0 means close all doors.
+    std::string pincode = "";
+    if ( data != 0 ) {
+        uint8_t button = (fixed >> 32) & 0xf;
+        uint32_t byte1 = data >> 24;
+        uint32_t byte2 = (data >> 16) & 0xff;
+        uint32_t pin = (byte2 << 8) | byte1;
+        uint32_t tail = data & 0xfff;
 
-        ESP_LOGD(TAG, "fixed=%llu remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u [DUPLICATE]",
-            (unsigned long long) fixed,
-            (unsigned long long) remote_id,
-            (unsigned) rolling,
-            (unsigned) button,
-            (unsigned) data,
-            (unsigned) frame_type
+        pincode = esphome::str_sprintf(
+            "%04d%s",
+            (byte2 << 8) | byte1,
+            button == 1 ? "-*" : button == 2 ? "-#" : ""
         );
-        return;
     }
 
 
-    ESP_LOGD(TAG, "fixed=%llu remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u",
-        (unsigned long long) fixed,
-        (unsigned long long) remote_id,
-        (unsigned) rolling,
-        (unsigned) button,
-        (unsigned) data,
-        (unsigned) frame_type
+    // Have we seen this fixed+rolling?
+    // TODO: decode data and include in last seen
+    bool already_seen = rolling == this->last_rolling && fixed == this->last_fixed;
+
+    ESP_LOGD(TAG, "fixed=%llu remote_id=%llu rolling=%u button=%u %s%s data=0x%08X frame_type=%u %s",
+        fixed,
+        remote_id,
+        rolling,
+        button,
+        pincode.length() > 0 ? "pincode=" : "",
+        pincode.c_str(),
+        data,
+        frame_type,
+        already_seen ? "[DUPLICATE]" : ""
     );
+
+    if (already_seen) {
+        return;
+    }
 
     // To catch duplicates
     this->last_fixed = fixed;
@@ -316,6 +329,10 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
 
         snprintf(buf, sizeof(buf), "%u", (unsigned) button);
         data["button"] = buf;
+
+        if ( pincode.length() > 0 ) {
+            data["pincode"] = pincode.c_str();
+        }
 
         this->fire_homeassistant_event("esphome.secplus_received", data);
     }
