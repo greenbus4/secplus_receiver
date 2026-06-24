@@ -31,7 +31,8 @@ This can also send an event to Home Assistant when a button press is detected. T
 The event is "esphome.secplus_received" and includes in the event data:
 "fixed_data", "rolling_code", "remote_id", and "button". This is useful if you want to trigger on a button
 press AND have all the data at the same time. (Triggering on a sensor may mean the other sensors are not in sync at
-that instant.)
+that instant.) This is the best way to see if a button has been pressed since just triggering on the fixed data
+will only trigger a state change if a _different_ button/remote was pushed first.
 
 To enable events add this to your YAML:
 
