@@ -41,9 +41,6 @@ substitutions:
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-#dashboard_import:
-#  package_import_url: github://greenbus4/secplus_receiver/secplus_receiver.yaml
-
 # ── Load Component from Github  ──────────────────────────────────────────────
 external_components:
   - source: github://greenbus4/secplus_receiver@main
