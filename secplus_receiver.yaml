@@ -58,7 +58,7 @@ secplus_receiver:
   # The button and remote ID may not work across vendors the same
 
   fixed_data_sensor:
-    name: %{remote_fixed_data_name}
+    name: ${remote_fixed_data_name}
 
   rolling_code_sensor:
     name: ${remote_rolling_code_name}
