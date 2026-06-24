@@ -207,6 +207,7 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
       // Both frames received: run decode_v2 and publish.
       if (frame_id == 2) {
         uint8_t frame_type = (this->packet1_len_ == 40) ? 0 : 1;
+
         uint32_t rolling = 0;
         uint64_t fixed = 0;
         uint32_t data = 0;
@@ -215,8 +216,7 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
         if (ret < 0) {
           ESP_LOGE(TAG, "secplus decode_v2 failed and returned: %d", ret);
         } else {
-          uint32_t remote = (fixed >> 32) & 0xf;
-          this->publish_(fixed & 0xf0ffffffffULL, rolling, remote, data, frame_type);
+          this->publish_(rolling, fixed, data, frame_type);
         }
 
         this->packet1_len_ = this->packet2_len_ = 0;
@@ -240,26 +240,54 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
   }
 }
 
-void SecplusReceiverComponent::publish_(uint64_t remote_id, uint32_t rolling,  uint32_t button, uint32_t data, uint8_t frame_type) {
+void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32_t data, uint8_t frame_type) {
 
-    if (remote_id == this->last_remote_id && rolling == this->last_rolling && button == this->last_button ) {
-        ESP_LOGD(TAG, "remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u [DUPLICATE]",
-            (unsigned long long) remote_id, (unsigned) rolling, (unsigned) button, (unsigned) data, (unsigned) frame_type);
+    // Attempt to get the remote id and the button from the fixed data
+    uint32_t button = (fixed >> 32) & 0xf;
+    uint64_t remote_id = fixed & 0xf0ffffffffULL;
+
+    // Have we seen this fixed+rolling?
+    // TODO: decode data and include in last seen
+    if (rolling == this->last_rolling && fixed == this->last_fixed ) {
+
+        ESP_LOGD(TAG, "fixed=%llu remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u [DUPLICATE]",
+            (unsigned long long) fixed,
+            (unsigned long long) remote_id,
+            (unsigned) rolling,
+            (unsigned) button,
+            (unsigned) data,
+            (unsigned) frame_type
+        );
         return;
     }
 
 
-    ESP_LOGD(TAG, "remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u", (unsigned long long) remote_id,
-           (unsigned) rolling, (unsigned) button, (unsigned) data, (unsigned) frame_type);
+    ESP_LOGD(TAG, "fixed=%llu remote_id=%llu rolling=%u button=%u data=0x%08X frame_type=%u",
+        (unsigned long long) fixed,
+        (unsigned long long) remote_id,
+        (unsigned) rolling,
+        (unsigned) button,
+        (unsigned) data,
+        (unsigned) frame_type
+    );
 
     // To catch duplicates
-    this->last_remote_id = remote_id;
+    this->last_fixed = fixed;
     this->last_rolling = rolling;
-    this->last_button = button;
 
 
 
     char buf[24];
+    if (this->fixed_data_sensor_ != nullptr) {
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) fixed);
+        this->fixed_data_sensor_->publish_state(buf);
+    }
+
+    if (this->rolling_code_sensor_ != nullptr) {
+        snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
+        this->rolling_code_sensor_->publish_state(buf);
+    }
+
     if (this->remote_id_sensor_ != nullptr) {
         snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
         this->remote_id_sensor_->publish_state(buf);
@@ -270,23 +298,22 @@ void SecplusReceiverComponent::publish_(uint64_t remote_id, uint32_t rolling,  u
         this->button_sensor_->publish_state(buf);
     }
 
-    if (this->rolling_code_sensor_ != nullptr) {
-        snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
-        this->rolling_code_sensor_->publish_state(buf);
-    }
 
     if (this->fire_event_) {
         std::map<std::string, std::string> data;
         char buf[24];
+
+        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) fixed);
+        data["fixed_data"] = buf;
+
+        snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
+        data["rolling_code"] = buf;
 
         snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
         data["remote_id"] = buf;
 
         snprintf(buf, sizeof(buf), "%u", (unsigned) button);
         data["button"] = buf;
-
-        snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
-        data["rolling_code"] = buf;
 
         this->fire_homeassistant_event("esphome.secplus_received", data);
     }

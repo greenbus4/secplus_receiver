@@ -22,9 +22,10 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 substitutions:
-  remote_id_name: "Remote ID"               # Name of the remote ID text sensor
+  remote_fixed_data_name:   "Fixed Data"    # Name of fixed data returned by remote as a text sensor
   remote_rolling_code_name: "Rolling Code"  # Name of the rolling code text sensor
-  remote_button_name: "Button ID"
+  remote_id_name:           "Remote ID"     # Name of the remote ID text sensor
+  remote_button_name:       "Button ID"     # Name of the button text sensor
 
   # Pin connections to CC1101
   spi_clk_pin: GPIO07
@@ -57,14 +58,20 @@ secplus_receiver:
 
   # These can be optional, depending on what
   # you want to bring into HA
-  remote_id_sensor:
-    name: ${remote_id_name}
+  # The button and remote ID may not work across vendors the same
 
-  button_sensor:
-    name: ${remote_button_name}
+  fixed_data_sensor:
+    name: %{remote_fixed_data_name}
 
   rolling_code_sensor:
     name: ${remote_rolling_code_name}
+
+  # -- These are disabled by default --
+  #remote_id_sensor:
+  #  name: ${remote_id_name}
+
+  #button_sensor:
+  #  name: ${remote_button_name}
 
   # Set this true and the event "esphome.secplus_received"
   # will fire when data is received. Event data will include

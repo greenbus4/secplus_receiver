@@ -18,14 +18,18 @@ Minimal YAML usage:
       pin: GPIO2
 
     secplus_receiver:
+      remote_fixed_data:
+        name: "Fixed Unique ID"
+
+      rolling_code_sensor:
+        name: "Rolling Code"
+
       remote_id_sensor:
         name: "Remote ID"
 
       button_sensor:
         name: "Button ID"
 
-      rolling_code_sensor:
-        name: "Rolling Code"
 
 """
 
@@ -48,8 +52,9 @@ AUTO_LOAD = ["text_sensor"]
 secplus_ns = cg.esphome_ns.namespace("secplus_receiver")
 SecplusReceiverComponent = secplus_ns.class_("SecplusReceiverComponent", cg.Component)
 
-CONF_REMOTE_ID_SENSOR = "remote_id_sensor"
+CONF_FIXED_DATA_SENSOR   = "fixed_data_sensor"
 CONF_ROLLING_CODE_SENSOR = "rolling_code_sensor"
+CONF_REMOTE_ID_SENSOR = "remote_id_sensor"
 CONF_BUTTON_SENSOR = "button_sensor"
 CONF_FIRE_EVENT = "fire_homeassistant_event"
 
@@ -63,18 +68,27 @@ SECPLUS_FILES = ["secplus.c", "secplus.h"]
 CONFIG_SCHEMA = cv.Schema(
     {
         cv.GenerateID(): cv.declare_id(SecplusReceiverComponent),
+
         cv.GenerateID(remote_base.CONF_RECEIVER_ID): cv.use_id(
             remote_receiver.RemoteReceiverComponent
         ),
-        cv.Optional(CONF_REMOTE_ID_SENSOR): text_sensor.text_sensor_schema(
-            icon="mdi:remote",
+
+        cv.Optional(CONF_FIXED_DATA_SENSOR): text_sensor.text_sensor_schema(
+            icon="mdi:identifier",
         ),
-        cv.Optional(CONF_BUTTON_SENSOR): text_sensor.text_sensor_schema(
-            icon="mdi:button-pointer",
-        ),
+
         cv.Optional(CONF_ROLLING_CODE_SENSOR): text_sensor.text_sensor_schema(
             icon="mdi:counter",
         ),
+
+        cv.Optional(CONF_REMOTE_ID_SENSOR): text_sensor.text_sensor_schema(
+            icon="mdi:remote",
+        ),
+
+        cv.Optional(CONF_BUTTON_SENSOR): text_sensor.text_sensor_schema(
+            icon="mdi:button-pointer",
+        ),
+
         cv.Optional(CONF_FIRE_EVENT, default=False): cv.boolean,
     }
 ).extend(cv.COMPONENT_SCHEMA)
@@ -110,6 +124,14 @@ async def to_code(config: dict) -> None:
     await cg.register_component(var, config)
     await remote_base.register_listener(var, config)
 
+    if fixed_config := config.get(CONF_FIXED_DATA_SENSOR):
+        sens = await text_sensor.new_text_sensor(fixed_config)
+        cg.add(var.set_fixed_data_sensor(sens))
+
+    if rolling_config := config.get(CONF_ROLLING_CODE_SENSOR):
+        sens = await text_sensor.new_text_sensor(rolling_config)
+        cg.add(var.set_rolling_code_sensor(sens))
+
     if remote_id_config := config.get(CONF_REMOTE_ID_SENSOR):
         sens = await text_sensor.new_text_sensor(remote_id_config)
         cg.add(var.set_remote_id_sensor(sens))
@@ -117,10 +139,6 @@ async def to_code(config: dict) -> None:
     if button_config := config.get(CONF_BUTTON_SENSOR):
         sens = await text_sensor.new_text_sensor(button_config)
         cg.add(var.set_button_sensor(sens))
-
-    if rolling_config := config.get(CONF_ROLLING_CODE_SENSOR):
-        sens = await text_sensor.new_text_sensor(rolling_config)
-        cg.add(var.set_rolling_code_sensor(sens))
 
     if config.get(CONF_FIRE_EVENT):
         cg.add(var.set_fire_event(True))

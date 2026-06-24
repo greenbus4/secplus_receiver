@@ -31,8 +31,9 @@ class SecplusReceiverComponent
       public api::CustomAPIDevice {
 
  public:
-  void set_remote_id_sensor(text_sensor::TextSensor *sensor) { this->remote_id_sensor_ = sensor; }
+  void set_fixed_data_sensor(text_sensor::TextSensor *sensor) { this->fixed_data_sensor_ = sensor; }
   void set_rolling_code_sensor(text_sensor::TextSensor *sensor) { this->rolling_code_sensor_ = sensor; }
+  void set_remote_id_sensor(text_sensor::TextSensor *sensor) { this->remote_id_sensor_ = sensor; }
   void set_button_sensor(text_sensor::TextSensor *sensor) { this->button_sensor_ = sensor; }
   void set_fire_event(bool fire) { this->fire_event_ = fire; }
 
@@ -45,15 +46,13 @@ class SecplusReceiverComponent
   void decode_raw_(const int32_t *pulses, int n_pulses);
 
   // Fire the sensors / log line once a Security+ v2 packet pair is decoded.
-  void publish_(uint64_t remote_id, uint32_t rolling, uint32_t button, uint32_t data, uint8_t frame_type);
+  void publish_(uint32_t rolling, uint64_t fixed, uint32_t data, uint8_t frame_type);
 
   bool fire_event_{false};
 
-  // seems like having a struct or just c++ skills would be good here...
-  // TODO add data
-  uint64_t last_remote_id{0};
+  // To prevent/limit duplicates
+  uint64_t last_fixed{0};
   uint32_t last_rolling{0};
-  uint32_t last_button{0};
 
 #if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
     std::string get_bits_string(); 
@@ -70,8 +69,9 @@ class SecplusReceiverComponent
   uint8_t packet2_[32]{};
   int packet2_len_{0};
 
-  text_sensor::TextSensor *remote_id_sensor_{nullptr};
+  text_sensor::TextSensor *fixed_data_sensor_{nullptr};
   text_sensor::TextSensor *rolling_code_sensor_{nullptr};
+  text_sensor::TextSensor *remote_id_sensor_{nullptr};
   text_sensor::TextSensor *button_sensor_{nullptr};
 };
 
