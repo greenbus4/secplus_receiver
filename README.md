@@ -103,7 +103,7 @@ complete working configuration.
 
 ```yaml
 packages:
-  remote_packate_shorthand: github://greenbus4/secplus_receiver/secplus_receiver.yaml@main
+  secplus: github://greenbus4/secplus_receiver/secplus_receiver.yaml@main
 ```
 
 ### 2 — Optionally add `substitutions` section in your YAML
