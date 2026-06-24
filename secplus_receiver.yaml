@@ -73,7 +73,7 @@ secplus_receiver:
   # Set this true and the event "esphome.secplus_received"
   # will fire when data is received. Event data will include
   # the remote_id, button, and rolling_code.
-  fire_homeassistant_event: true
+  #fire_homeassistant_event: true
 
 
 # ── Needed if fire_homeassistant_event is trues ──────────────────────────────

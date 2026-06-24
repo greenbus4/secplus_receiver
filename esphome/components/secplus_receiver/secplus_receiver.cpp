@@ -300,6 +300,8 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
 
 
     if (this->fire_event_) {
+        ESP_LOGD(TAG,"Sent 'esphome.secplus_received' event to Home Assistant.");
+
         std::map<std::string, std::string> data;
         char buf[24];
 
