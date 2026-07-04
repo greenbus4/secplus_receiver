@@ -21,6 +21,7 @@
 #include "esphome/components/remote_base/remote_base.h"
 #include "esphome/components/text_sensor/text_sensor.h"
 #include "esphome/components/api/custom_api_device.h"
+#include "esphome/core/automation.h"
 
 namespace esphome {
 namespace secplus_receiver {
@@ -40,6 +41,13 @@ class SecplusReceiverComponent
   void dump_config() override;
   bool on_receive(remote_base::RemoteReceiveData data) override;
 
+  // Automations subscribe here (via the trigger class below)
+  void add_on_remote_received_callback(
+      std::function<void(uint64_t, uint64_t, uint8_t, uint32_t)> &&callback) {
+    this->remote_received_callback_.add(std::move(callback));
+  }
+
+
  protected:
   // Feed a burst of signed pulse durations (us) through the Manchester decoder.
   // Negative = signal LOW (space), positive = signal HIGH (mark).
@@ -53,6 +61,10 @@ class SecplusReceiverComponent
   // To prevent/limit duplicates
   uint64_t last_fixed{0};
   uint32_t last_rolling{0};
+
+  CallbackManager<void(uint64_t, uint64_t, uint8_t, uint32_t)> remote_received_callback_{};
+
+
 
 #if ESPHOME_LOG_LEVEL >= ESPHOME_LOG_LEVEL_VERBOSE
     std::string get_bits_string(); 
@@ -74,6 +86,20 @@ class SecplusReceiverComponent
   text_sensor::TextSensor *remote_id_sensor_{nullptr};
   text_sensor::TextSensor *button_sensor_{nullptr};
 };
+
+
+class RemoteReceivedTrigger : public Trigger<uint64_t, uint64_t, uint8_t, uint32_t> {
+ public:
+  explicit RemoteReceivedTrigger(SecplusReceiverComponent *parent) {
+    parent->add_on_remote_received_callback(
+        [this](uint64_t fixed_data, uint64_t remote_id, uint8_t button, uint32_t rolling) {
+          this->trigger(fixed_data, remote_id, button, rolling);
+        });
+  }
+};
+
+
+
 
 }  // namespace secplus_receiver
 }  // namespace esphome

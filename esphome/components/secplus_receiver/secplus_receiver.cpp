@@ -243,24 +243,24 @@ void SecplusReceiverComponent::decode_raw_(const int32_t *pulses, int n_pulses) 
 void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32_t data, uint8_t frame_type) {
 
     // Attempt to get the remote id and the button from the fixed data
-    uint32_t button = (fixed >> 32) & 0xf;
+    uint8_t button = (fixed >> 32) & 0xf;
     uint64_t remote_id = fixed & 0xf0ffffffffULL;
 
     // Pull out the keypad, if any. This implementation is incomplete.
-    // This isn't great the keypad = 0 means close all doors.
+    // This isn't great: the keypad = 0 means close all doors.
     std::string pincode = "";
-    if ( data != 0 ) {
-        uint8_t button = (fixed >> 32) & 0xf;
+    if (frame_type == 1) {   // 64-bit packet: data field is present
         uint32_t byte1 = data >> 24;
         uint32_t byte2 = (data >> 16) & 0xff;
-        uint32_t pin = (byte2 << 8) | byte1;
-        uint32_t tail = data & 0xfff;
+        uint32_t pin  = (byte2 << 8) | byte1;
+        uint32_t tail = data & 0xfff;   // unused for now; log or publish if useful
 
-        pincode = esphome::str_sprintf(
-            "%04d%s",
-            (byte2 << 8) | byte1,
-            button == 1 ? "-*" : button == 2 ? "-#" : ""
-        );
+        if (button == 3) {
+            pincode = "enter";
+        } else {
+            const char *suffix = (button == 1) ? "*" : (button == 2) ? "#" : "";
+            pincode = esphome::str_sprintf("%04u%s", pin, suffix);
+        }
     }
 
 
@@ -288,7 +288,9 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
     this->last_fixed = fixed;
     this->last_rolling = rolling;
 
-
+    // Call the on_remote_received callback
+    // TODO: send pincode, too?
+    this->remote_received_callback_.call(fixed, remote_id, button, rolling);
 
     char buf[24];
     if (this->fixed_data_sensor_ != nullptr) {

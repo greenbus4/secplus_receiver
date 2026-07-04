@@ -30,6 +30,13 @@ Minimal YAML usage:
       button_sensor:
         name: "Button ID"
 
+      on_remote_received:
+        then:
+          - lambda: |-
+              ESP_LOGI("main", "fixed_data=%llu remote_id=%llu button=%u rolling=%u",
+                       (unsinged long long) fixed_data,
+                       (unsigned long long) remote_id,
+                       button, rolling);
 
 """
 
@@ -38,9 +45,10 @@ import os
 import urllib.request
 
 import esphome.codegen as cg
+from esphome import automation
 from esphome.components import remote_base, remote_receiver, text_sensor
 import esphome.config_validation as cv
-from esphome.const import CONF_ID
+from esphome.const import CONF_ID, CONF_TRIGGER_ID
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -52,11 +60,18 @@ AUTO_LOAD = ["text_sensor"]
 secplus_ns = cg.esphome_ns.namespace("secplus_receiver")
 SecplusReceiverComponent = secplus_ns.class_("SecplusReceiverComponent", cg.Component)
 
+# Trigger for on_remote_received: passes (fixed_data, remote_id, button, rolling)
+RemoteReceivedTrigger = secplus_ns.class_(
+    "RemoteReceivedTrigger",
+    automation.Trigger.template(cg.uint64, cg.uint64, cg.uint8, cg.uint32),
+)
+
 CONF_FIXED_DATA_SENSOR   = "fixed_data_sensor"
 CONF_ROLLING_CODE_SENSOR = "rolling_code_sensor"
 CONF_REMOTE_ID_SENSOR = "remote_id_sensor"
 CONF_BUTTON_SENSOR = "button_sensor"
 CONF_FIRE_EVENT = "fire_homeassistant_event"
+CONF_ON_REMOTE_RECEIVED = "on_remote_received"
 
 # ── Upstream C library ────────────────────────────────────────────────────────
 # argilo/secplus has no versioned releases; we track master.
@@ -90,6 +105,12 @@ CONFIG_SCHEMA = cv.Schema(
         ),
 
         cv.Optional(CONF_FIRE_EVENT, default=False): cv.boolean,
+
+        cv.Optional(CONF_ON_REMOTE_RECEIVED): automation.validate_automation(
+            {
+                cv.GenerateID(CONF_TRIGGER_ID): cv.declare_id(RemoteReceivedTrigger),
+            }
+        ),
     }
 ).extend(cv.COMPONENT_SCHEMA)
 
@@ -143,4 +164,16 @@ async def to_code(config: dict) -> None:
     if config.get(CONF_FIRE_EVENT):
         cg.add(var.set_fire_event(True))
 
+    for conf in config.get(CONF_ON_REMOTE_RECEIVED, []):
+        trigger = cg.new_Pvariable(conf[CONF_TRIGGER_ID], var)
+        await automation.build_automation(
+            trigger,
+            [
+                (cg.uint64, "fixed_data"),
+                (cg.uint64, "remote_id"),
+                (cg.uint8, "button"),
+                (cg.uint32, "rolling"),
+            ],
+            conf,
+        )
 
