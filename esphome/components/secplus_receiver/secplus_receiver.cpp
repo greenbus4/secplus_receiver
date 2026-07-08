@@ -268,7 +268,7 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
     // TODO: decode data and include in last seen
     bool already_seen = rolling == this->last_rolling && fixed == this->last_fixed;
 
-    ESP_LOGD(TAG, "fixed=%llu remote_id=%llu rolling=%u button=%u %s%s data=0x%08X frame_type=%u %s",
+    ESP_LOGD(TAG, "fixed=%" PRIu64 " remote_id=%" PRIu64 " rolling=%u button=%u %s%s data=0x%08X frame_type=%u %s",
         fixed,
         remote_id,
         rolling,
@@ -294,7 +294,7 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
 
     char buf[24];
     if (this->fixed_data_sensor_ != nullptr) {
-        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) fixed);
+        snprintf(buf, sizeof(buf), "%" PRIu64, fixed);
         this->fixed_data_sensor_->publish_state(buf);
     }
 
@@ -304,7 +304,7 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
     }
 
     if (this->remote_id_sensor_ != nullptr) {
-        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
+        snprintf(buf, sizeof(buf), "%" PRIu64, remote_id);
         this->remote_id_sensor_->publish_state(buf);
     }
 
@@ -320,13 +320,13 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
         std::map<std::string, std::string> data;
         char buf[24];
 
-        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) fixed);
+        snprintf(buf, sizeof(buf), "%" PRIu64, fixed);
         data["fixed_data"] = buf;
 
         snprintf(buf, sizeof(buf), "%u", (unsigned) rolling);
         data["rolling_code"] = buf;
 
-        snprintf(buf, sizeof(buf), "%llu", (unsigned long long) remote_id);
+        snprintf(buf, sizeof(buf), "%" PRIu64, remote_id);
         data["remote_id"] = buf;
 
         snprintf(buf, sizeof(buf), "%u", (unsigned) button);
