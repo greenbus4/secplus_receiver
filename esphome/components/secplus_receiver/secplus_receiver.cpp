@@ -259,7 +259,10 @@ void SecplusReceiverComponent::publish_(uint32_t rolling, uint64_t fixed, uint32
             pincode = "enter";
         } else {
             const char *suffix = (button == 1) ? "*" : (button == 2) ? "#" : "";
-            pincode = esphome::str_sprintf("%04u%s", pin, suffix);
+            // snprintf rather than esphome::str_sprintf, which ESPHome 2026.11.0 removed.
+            char pin_buf[16];
+            snprintf(pin_buf, sizeof(pin_buf), "%04u%s", (unsigned) pin, suffix);
+            pincode = pin_buf;
         }
     }
 
